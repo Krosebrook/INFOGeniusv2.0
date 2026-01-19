@@ -48,7 +48,8 @@ const Infographic: React.FC<InfographicProps> = ({ image, previousImage, variati
     setZoomLevel(1);
   }
 
-  const handleCopy = async () => {
+  const handleCopy = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     try {
         const response = await fetch(image.data);
         const blob = await response.blob();
@@ -67,7 +68,8 @@ const Infographic: React.FC<InfographicProps> = ({ image, previousImage, variati
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = async (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     try {
         showToast("Starting download...");
         const response = await fetch(image.data);
@@ -154,7 +156,7 @@ const Infographic: React.FC<InfographicProps> = ({ image, previousImage, variati
       
       {/* Toast Notification */}
       {toast.show && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/90 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 text-sm font-medium animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-none">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/90 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 text-sm font-medium animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-none border border-white/10">
             <Info className="w-4 h-4 text-cyan-400" />
             {toast.message}
         </div>
@@ -163,6 +165,31 @@ const Infographic: React.FC<InfographicProps> = ({ image, previousImage, variati
       {/* Image Container */}
       <div className="relative group w-full bg-slate-100 dark:bg-slate-900 rounded-t-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700/50">
         
+        {/* Quick Actions Overlay (New) */}
+        <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+           <button 
+              onClick={handleCopy}
+              className="p-2.5 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white rounded-full transition-all border border-white/10 shadow-lg hover:scale-110 active:scale-95"
+              title="Copy to Clipboard"
+            >
+              {copied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5" />}
+           </button>
+           <button 
+              onClick={handleDownload}
+              className="p-2.5 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white rounded-full transition-all border border-white/10 shadow-lg hover:scale-110 active:scale-95"
+              title="Download PNG"
+            >
+              <Download className="w-5 h-5" />
+           </button>
+           <button 
+              onClick={() => setIsFullscreen(true)}
+              className="p-2.5 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white rounded-full transition-all border border-white/10 shadow-lg hover:scale-110 active:scale-95"
+              title="Fullscreen"
+            >
+              <Maximize2 className="w-5 h-5" />
+           </button>
+        </div>
+
         {/* Image Display Area with Comparison Logic */}
         <div className="relative w-full overflow-hidden min-h-[300px] flex items-center justify-center bg-checkered">
             {previousImage && (
