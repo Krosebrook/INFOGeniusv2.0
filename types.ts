@@ -20,7 +20,16 @@ export type VisualStyle =
   | 'Origami'
   | 'Watercolor'
   | 'Neon'
-  | 'Flat Art';
+  | 'Flat Art'
+  | 'Isometric'
+  | 'Low Poly'
+  | 'Pop Art'
+  | 'Steampunk'
+  | 'Ukiyo-e'
+  | 'Graffiti'
+  | 'Noir'
+  | 'Stained Glass'
+  | 'Claymation';
 
 export type Language = 'English' | 'Spanish' | 'French' | 'German' | 'Mandarin' | 'Japanese' | 'Hindi' | 'Arabic' | 'Portuguese' | 'Russian';
 

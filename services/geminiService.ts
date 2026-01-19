@@ -45,6 +45,15 @@ const getStyleInstruction = (style: VisualStyle): string => {
     case 'Watercolor': return "Aesthetic: Soft Watercolor. Bleeding colors, paper texture, artistic and fluid, soft edges, pastel palette.";
     case 'Neon': return "Aesthetic: Neon Light Sign. Glowing tubes on black background, high contrast, vibrant saturated colors, electric feel.";
     case 'Flat Art': return "Aesthetic: Corporate Memphis / Flat Design. Solid colors, no gradients, clean vectors, playful proportions.";
+    case 'Isometric': return "Aesthetic: Isometric Projection. 30-degree parallel projection, clean lines, technical feel, detailed without perspective distortion.";
+    case 'Low Poly': return "Aesthetic: Low Poly Art. Geometric abstraction, faceted shapes, sharp edges, flat shading, vibrant lighting.";
+    case 'Pop Art': return "Aesthetic: Pop Art. Halftone patterns, bold black outlines, primary colors, Roy Lichtenstein style, comic book aesthetic.";
+    case 'Steampunk': return "Aesthetic: Steampunk. Brass and copper tones, gears, steam-powered machinery, Victorian era fashion, ornate details.";
+    case 'Ukiyo-e': return "Aesthetic: Japanese Woodblock Print. Flat colors, bold outlines, textured paper, asymmetry, nature themes, Hokusai style.";
+    case 'Graffiti': return "Aesthetic: Street Art Graffiti. Spray paint textures, drips, bold wildstyle typography, vibrant urban colors, wall texture background.";
+    case 'Noir': return "Aesthetic: Film Noir. High contrast black and white, dramatic shadows (chiaroscuro), moody atmosphere, cinematic lighting.";
+    case 'Stained Glass': return "Aesthetic: Stained Glass. Mosaic patterns, vivid light passing through colored glass, heavy lead lines, luminous.";
+    case 'Claymation': return "Aesthetic: Claymation/Stop Motion. Plasticine texture, fingerprints visible, soft studio lighting, shallow depth of field, Aardman style.";
     default: return "Aesthetic: High-quality digital scientific illustration. Clean, modern, highly detailed.";
   }
 };

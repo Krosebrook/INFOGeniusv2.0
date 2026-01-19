@@ -15,23 +15,32 @@ import Infographic from './components/Infographic';
 import Loading from './components/Loading';
 import IntroScreen from './components/IntroScreen';
 import SearchResults from './components/SearchResults';
-import { Search, AlertTriangle, History, GraduationCap, Palette, Microscope, Atom, Compass, Globe, Sun, Moon, Settings, Volume2, PlayCircle, PauseCircle, Lightbulb, Trash2, BookOpen, Maximize, RefreshCcw, Camera, Smile, Feather, Zap, Box, PenTool, Grid, File, Droplet, Monitor, Square, Clock, RotateCcw, RectangleHorizontal, Info, Save, Edit3 } from 'lucide-react';
+import { Search, AlertTriangle, History, GraduationCap, Palette, Microscope, Atom, Compass, Globe, Sun, Moon, Settings, Volume2, PlayCircle, PauseCircle, Lightbulb, Trash2, BookOpen, Maximize, RefreshCcw, Camera, Smile, Feather, Zap, Box, PenTool, Grid, File, Droplet, Monitor, Square, Clock, RotateCcw, RectangleHorizontal, Info, Save, Edit3, Layers, Ghost, Hexagon, Cog, Mountain, MoonStar, Aperture, Paintbrush } from 'lucide-react';
 
-// Style Options Definition
-const STYLE_OPTIONS: { value: VisualStyle, icon: any, label: string }[] = [
-  { value: 'Default', icon: Square, label: 'Standard' },
-  { value: 'Minimalist', icon: Compass, label: 'Minimalist' },
-  { value: 'Realistic', icon: Camera, label: 'Realistic' },
-  { value: 'Cartoon', icon: Smile, label: 'Cartoon' },
-  { value: 'Vintage', icon: Feather, label: 'Vintage' },
-  { value: 'Futuristic', icon: Zap, label: 'Cyberpunk' },
-  { value: '3D Render', icon: Box, label: '3D Render' },
-  { value: 'Sketch', icon: PenTool, label: 'Blueprint' },
-  { value: 'Pixel Art', icon: Grid, label: 'Pixel Art' },
-  { value: 'Origami', icon: File, label: 'Origami' },
-  { value: 'Watercolor', icon: Droplet, label: 'Watercolor' },
-  { value: 'Neon', icon: Lightbulb, label: 'Neon' },
-  { value: 'Flat Art', icon: Monitor, label: 'Flat Design' },
+// Style Options Definition with Colors
+const STYLE_OPTIONS: { value: VisualStyle, icon: any, label: string, color: string }[] = [
+  { value: 'Default', icon: Square, label: 'Standard', color: 'text-slate-600 bg-slate-100' },
+  { value: 'Minimalist', icon: Compass, label: 'Minimalist', color: 'text-slate-500 bg-slate-50' },
+  { value: 'Realistic', icon: Camera, label: 'Realistic', color: 'text-blue-600 bg-blue-50' },
+  { value: '3D Render', icon: Box, label: '3D Render', color: 'text-indigo-600 bg-indigo-50' },
+  { value: 'Isometric', icon: Layers, label: 'Isometric', color: 'text-sky-600 bg-sky-50' },
+  { value: 'Claymation', icon: Ghost, label: 'Claymation', color: 'text-orange-500 bg-orange-50' },
+  { value: 'Low Poly', icon: Hexagon, label: 'Low Poly', color: 'text-emerald-500 bg-emerald-50' },
+  { value: 'Pixel Art', icon: Grid, label: 'Pixel Art', color: 'text-purple-500 bg-purple-50' },
+  { value: 'Cartoon', icon: Smile, label: 'Cartoon', color: 'text-yellow-600 bg-yellow-50' },
+  { value: 'Pop Art', icon: Zap, label: 'Pop Art', color: 'text-pink-500 bg-pink-50' },
+  { value: 'Graffiti', icon: Paintbrush, label: 'Graffiti', color: 'text-fuchsia-600 bg-fuchsia-50' },
+  { value: 'Neon', icon: Lightbulb, label: 'Neon', color: 'text-cyan-500 bg-slate-900' },
+  { value: 'Steampunk', icon: Cog, label: 'Steampunk', color: 'text-amber-700 bg-amber-100' },
+  { value: 'Vintage', icon: Feather, label: 'Vintage', color: 'text-amber-800 bg-orange-100' },
+  { value: 'Ukiyo-e', icon: Mountain, label: 'Ukiyo-e', color: 'text-teal-700 bg-teal-50' },
+  { value: 'Watercolor', icon: Droplet, label: 'Watercolor', color: 'text-indigo-400 bg-indigo-50' },
+  { value: 'Origami', icon: File, label: 'Origami', color: 'text-rose-500 bg-rose-50' },
+  { value: 'Stained Glass', icon: Aperture, label: 'Stained Glass', color: 'text-red-600 bg-yellow-50' },
+  { value: 'Noir', icon: MoonStar, label: 'Film Noir', color: 'text-slate-800 bg-slate-200' },
+  { value: 'Sketch', icon: PenTool, label: 'Blueprint', color: 'text-blue-800 bg-blue-100' },
+  { value: 'Flat Art', icon: Monitor, label: 'Flat Design', color: 'text-green-600 bg-green-50' },
+  { value: 'Futuristic', icon: Atom, label: 'Cyberpunk', color: 'text-violet-500 bg-slate-900' },
 ];
 
 const App: React.FC = () => {
@@ -677,16 +686,22 @@ const App: React.FC = () => {
                       </button>
 
                       {isStyleMenuOpen && (
-                        <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl p-2 max-h-[300px] overflow-y-auto grid grid-cols-1 md:w-[300px] md:grid-cols-2 gap-2">
+                        <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl p-2 max-h-[400px] overflow-y-auto grid grid-cols-1 md:w-[320px] md:grid-cols-2 gap-2">
                              {STYLE_OPTIONS.map((option) => (
                                <button
                                  key={option.value}
                                  type="button"
                                  onClick={() => { setVisualStyle(option.value); setIsStyleMenuOpen(false); }}
-                                 className={`flex items-center gap-2 p-2 rounded-xl text-xs font-bold transition-all ${visualStyle === option.value ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-transparent'}`}
+                                 className={`flex items-center gap-3 p-2.5 rounded-xl text-xs font-bold transition-all text-left ${
+                                    visualStyle === option.value 
+                                      ? 'ring-2 ring-cyan-500 ring-offset-1 dark:ring-offset-slate-900' 
+                                      : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+                                 }`}
                                >
-                                  {React.createElement(option.icon, { className: "w-4 h-4" })}
-                                  <span>{option.label}</span>
+                                  <div className={`p-2 rounded-lg ${option.color} shrink-0`}>
+                                      {React.createElement(option.icon, { className: "w-4 h-4" })}
+                                  </div>
+                                  <span className="text-slate-700 dark:text-slate-300">{option.label}</span>
                                </button>
                              ))}
                         </div>
@@ -902,23 +917,31 @@ const App: React.FC = () => {
                             <div className="relative aspect-video overflow-hidden bg-slate-100 dark:bg-slate-800">
                                 <img src={img.data} alt={img.prompt} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                                 
-                                {/* Hover Tooltip Prompt Overlay */}
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end">
-                                    <p className="text-white text-xs line-clamp-3 mb-2">{img.prompt}</p>
+                                {/* New Hover Overlay - Modal Style */}
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                                    <div className="w-[90%] bg-slate-900/95 backdrop-blur-md rounded-xl p-4 border border-white/10 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 shadow-xl flex flex-col gap-2">
+                                        <div className="flex items-center gap-2 text-cyan-400 text-[10px] font-bold uppercase tracking-wider border-b border-white/5 pb-2 mb-1">
+                                            <Clock className="w-3 h-3" />
+                                            <span>{new Date(img.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                        </div>
+                                        <p className="text-white text-xs leading-relaxed line-clamp-4 font-medium">
+                                            {img.prompt}
+                                        </p>
+                                    </div>
                                 </div>
 
-                                {/* Actions Overlay */}
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                {/* Actions Overlay - Top Right */}
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 z-20">
                                      <button
                                         onClick={(e) => { e.stopPropagation(); restoreImage(img); }}
-                                        className="p-2 bg-white/20 hover:bg-white text-white hover:text-cyan-600 rounded-full backdrop-blur-md transition-all shadow-lg"
+                                        className="p-2 bg-slate-900/50 hover:bg-white text-white hover:text-cyan-600 rounded-full backdrop-blur-md transition-all shadow-lg border border-white/10"
                                         title="Restore this version"
                                      >
                                         <RotateCcw className="w-4 h-4" />
                                      </button>
                                      <button
                                         onClick={(e) => deleteHistoryItem(e, img.id)}
-                                        className="p-2 bg-white/20 hover:bg-red-500 text-white rounded-full backdrop-blur-md transition-all shadow-lg"
+                                        className="p-2 bg-slate-900/50 hover:bg-red-500 text-white rounded-full backdrop-blur-md transition-all shadow-lg border border-white/10"
                                         title="Delete from history"
                                      >
                                         <Trash2 className="w-4 h-4" />
@@ -930,10 +953,6 @@ const App: React.FC = () => {
                                      <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 line-clamp-1 leading-tight">{img.prompt}</h4>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-400 font-mono">
-                                    <div className="flex items-center gap-1">
-                                        <Clock className="w-3 h-3" />
-                                        <span>{new Date(img.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                    </div>
                                     <div className="flex items-center gap-1">
                                         <div className="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
                                         <span className="capitalize">{img.style || 'Default'}</span>

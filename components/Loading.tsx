@@ -11,7 +11,6 @@ interface LoadingProps {
   facts?: string[];
 }
 
-// Fix: Define interface for FlyingItem props
 interface FlyingItemProps {
   delay: number;
   type: 'icon' | 'text';
@@ -20,25 +19,29 @@ interface FlyingItemProps {
   total: number;
 }
 
-// Moved outside component to ensure it's treated as a proper React component
-// Fix: Use React.FC<FlyingItemProps> to properly type the component and avoid key prop errors
 const FlyingItem: React.FC<FlyingItemProps> = ({ delay, type, content, index, total }) => {
-  // Calculate entry angle based on index to distribute them around the circle
-  const angle = (index / total) * 360;
-  // Randomize distance slightly
-  const distance = 60 + (index % 3) * 20; 
-  // Randomize scale for more dynamic effect
-  const startScale = 0.8 + (index % 3) * 0.3;
+  // Create deterministic variations based on index
+  // Use a prime number multiplier to scatter the angles more naturally (Golden Angle approx)
+  const angle = ((index * 137.5) % 360); 
   
-  // Calculate start positions based on angle
+  // Vary distance to create depth
+  const distance = 70 + (index % 4) * 15; 
+  
+  // Vary scale more significantly for dynamic visual weight
+  const startScale = 0.6 + (index % 5) * 0.25;
+  
+  // Calculate start positions
   const startX = Math.cos(angle * Math.PI / 180) * distance;
   const startY = Math.sin(angle * Math.PI / 180) * distance;
+
+  // Spin direction variation
+  const spinDirection = index % 2 === 0 ? 1 : -1;
 
   return (
     <div 
       className={`absolute flex items-center justify-center font-bold opacity-0 select-none ${type === 'text' ? 'text-cyan-600 dark:text-cyan-400 text-[10px] md:text-xs tracking-[0.2em] bg-white/80 dark:bg-slate-900/80 border border-cyan-500/30 px-2 py-0.5 md:px-3 md:py-1 rounded shadow-[0_0_10px_rgba(6,182,212,0.3)] backdrop-blur-sm' : 'text-amber-500 dark:text-amber-400'}`}
       style={{
-        animation: `implode-${index} 3.5s infinite ease-in-out ${delay}s`,
+        animation: `implode-${index} 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite ${delay}s`,
         zIndex: 10,
       }}
     >
@@ -48,13 +51,13 @@ const FlyingItem: React.FC<FlyingItemProps> = ({ delay, type, content, index, to
             transform: translate(${startX}vw, ${startY}vh) scale(${startScale}) rotate(${angle}deg); 
             opacity: 0; 
           }
-          10% { opacity: 1; }
-          70% {
-             transform: translate(0, 0) scale(0.4) rotate(${angle + 360}deg); 
+          15% { opacity: 1; }
+          60% {
+             transform: translate(0, 0) scale(0.5) rotate(${angle + (360 * spinDirection)}deg); 
              opacity: 1;
           }
           100% { 
-            transform: translate(0, 0) scale(0) rotate(${angle + 720}deg); 
+            transform: translate(0, 0) scale(0) rotate(${angle + (720 * spinDirection)}deg); 
             opacity: 0; 
           }
         }
@@ -135,7 +138,7 @@ const Loading: React.FC<LoadingProps> = ({ status, step, facts = [] }) => {
                 key={idx}
                 content={item.content} 
                 type={item.type} 
-                delay={idx * 0.2} 
+                delay={idx * 0.3} 
                 index={idx}
                 total={items.length}
              />

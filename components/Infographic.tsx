@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { GeneratedImage } from '../types';
 import { logError, interpretError } from '../services/errorService';
-import { Download, Sparkles, Edit3, Maximize2, X, ZoomIn, ZoomOut, SplitSquareHorizontal, Copy, Check, Info, Share2 } from 'lucide-react';
+import { Download, Sparkles, Edit3, Maximize2, X, ZoomIn, ZoomOut, SplitSquareHorizontal, Copy, Check, Info, Share2, FileDown, Clipboard } from 'lucide-react';
 
 interface InfographicProps {
   image: GeneratedImage;
@@ -122,15 +122,10 @@ const Infographic: React.FC<InfographicProps> = ({ image, previousImage, onEdit,
       )}
 
       {/* Image Container */}
-      <div className="relative group w-full bg-slate-100 dark:bg-slate-900 rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700/50">
-        {/* Decorative Corner Markers */}
-        <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-cyan-500/30 rounded-tl-2xl z-20 pointer-events-none"></div>
-        <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-cyan-500/30 rounded-tr-2xl z-20 pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-cyan-500/30 rounded-bl-2xl z-20 pointer-events-none"></div>
-        <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-cyan-500/30 rounded-br-2xl z-20 pointer-events-none"></div>
-
+      <div className="relative group w-full bg-slate-100 dark:bg-slate-900 rounded-t-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700/50">
+        
         {/* Image Display Area with Comparison Logic */}
-        <div className="relative w-full overflow-hidden">
+        <div className="relative w-full overflow-hidden min-h-[300px] flex items-center justify-center bg-checkered">
             {previousImage && (
                 <div 
                     className={`absolute inset-0 z-10 transition-opacity duration-200 ${isComparing ? 'opacity-100' : 'opacity-0'}`}
@@ -138,7 +133,7 @@ const Infographic: React.FC<InfographicProps> = ({ image, previousImage, onEdit,
                     <img 
                         src={previousImage.data} 
                         alt="Original"
-                        className="w-full h-auto object-contain bg-checkered max-h-[80vh]"
+                        className="w-full h-full object-contain"
                     />
                      <div className="absolute top-4 left-4 bg-black/70 text-white text-xs font-bold px-3 py-1 rounded-full pointer-events-none">
                         ORIGINAL
@@ -150,7 +145,7 @@ const Infographic: React.FC<InfographicProps> = ({ image, previousImage, onEdit,
               src={image.data} 
               alt={image.prompt} 
               onClick={() => setIsFullscreen(true)}
-              className="w-full h-auto object-contain max-h-[80vh] bg-checkered relative z-0 cursor-zoom-in"
+              className="w-full h-auto object-contain max-h-[75vh] relative z-0 cursor-zoom-in"
             />
             
             {previousImage && !isComparing && (
@@ -158,64 +153,80 @@ const Infographic: React.FC<InfographicProps> = ({ image, previousImage, onEdit,
                     EDITED
                 </div>
             )}
+
+            {/* Compare Button Overlay */}
+            {previousImage && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                        onMouseDown={() => setIsComparing(true)}
+                        onMouseUp={() => setIsComparing(false)}
+                        onMouseLeave={() => setIsComparing(false)}
+                        onTouchStart={() => setIsComparing(true)}
+                        onTouchEnd={() => setIsComparing(false)}
+                        className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-md border border-white/20 text-white px-5 py-2.5 rounded-full shadow-xl hover:bg-slate-800 transition-all active:scale-95 select-none"
+                    >
+                        <SplitSquareHorizontal className="w-4 h-4" />
+                        <span className="text-sm font-bold">Hold to Compare</span>
+                    </button>
+                </div>
+            )}
         </div>
-        
-        {/* Hover Overlay for Quick Actions */}
-        <div className="absolute top-6 right-6 flex flex-col sm:flex-row gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-30 pointer-events-none md:pointer-events-auto">
-          <button 
-            onClick={() => setIsFullscreen(true)}
-            className="pointer-events-auto bg-black/60 backdrop-blur-md text-white p-3 rounded-xl shadow-lg hover:bg-cyan-600 transition-colors border border-white/10 block"
-            title="Fullscreen View"
-          >
-            <Maximize2 className="w-5 h-5" />
-          </button>
-          
-          <button 
-            onClick={handleCopy}
-            className="pointer-events-auto bg-black/60 backdrop-blur-md text-white p-3 rounded-xl shadow-lg hover:bg-cyan-600 transition-colors border border-white/10 block"
-            title="Copy Image"
-          >
-            {copied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5" />}
-          </button>
+      </div>
 
-          <button 
-            onClick={handleDownload}
-            className="pointer-events-auto bg-black/60 backdrop-blur-md text-white p-3 rounded-xl shadow-lg hover:bg-cyan-600 transition-colors border border-white/10 block"
-            title="Download Image"
-          >
-            <Download className="w-5 h-5" />
-          </button>
+      {/* Action Toolbar (Persistent) */}
+      <div className="w-full bg-white dark:bg-slate-800 border-x border-b border-slate-200 dark:border-slate-700/50 p-2 flex flex-wrap items-center justify-between gap-2 shadow-sm rounded-b-2xl mb-4">
+          <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 font-mono px-2 truncate max-w-[50%]">
+             <span className="truncate">{image.prompt}</span>
+          </div>
 
-          <button 
-            onClick={handleShare}
-            className="pointer-events-auto bg-black/60 backdrop-blur-md text-white p-3 rounded-xl shadow-lg hover:bg-cyan-600 transition-colors border border-white/10 block"
-            title="Share"
-          >
-            <Share2 className="w-5 h-5" />
-          </button>
-        </div>
+          <div className="flex items-center gap-1">
+              <button 
+                onClick={handleCopy}
+                className="flex items-center gap-2 px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider group"
+                title="Copy Image to Clipboard"
+              >
+                 {copied ? <Check className="w-4 h-4 text-green-500" /> : <Clipboard className="w-4 h-4 group-hover:text-cyan-500" />}
+                 <span className="hidden sm:inline">Copy</span>
+              </button>
 
-        {/* Compare Button (Only if previous image exists) */}
-        {previousImage && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
-                <button
-                    onMouseDown={() => setIsComparing(true)}
-                    onMouseUp={() => setIsComparing(false)}
-                    onMouseLeave={() => setIsComparing(false)}
-                    onTouchStart={() => setIsComparing(true)}
-                    onTouchEnd={() => setIsComparing(false)}
-                    className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-md border border-white/20 text-white px-5 py-2.5 rounded-full shadow-xl hover:bg-slate-800 transition-all active:scale-95 select-none"
-                >
-                    <SplitSquareHorizontal className="w-4 h-4" />
-                    <span className="text-sm font-bold">Hold to Compare</span>
-                </button>
-            </div>
-        )}
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
+              <button 
+                onClick={handleDownload}
+                className="flex items-center gap-2 px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider group"
+                title="Download PNG"
+              >
+                 <FileDown className="w-4 h-4 group-hover:text-cyan-500" />
+                 <span className="hidden sm:inline">Download</span>
+              </button>
+
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
+              <button 
+                onClick={handleShare}
+                className="flex items-center gap-2 px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider group"
+                title="Share Image"
+              >
+                 <Share2 className="w-4 h-4 group-hover:text-cyan-500" />
+                 <span className="hidden sm:inline">Share</span>
+              </button>
+              
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+
+              <button 
+                onClick={() => setIsFullscreen(true)}
+                className="flex items-center gap-2 px-3 py-2 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider group"
+                title="Fullscreen View"
+              >
+                 <Maximize2 className="w-4 h-4 group-hover:text-cyan-500" />
+                 <span className="hidden sm:inline">View</span>
+              </button>
+          </div>
       </div>
 
       {/* Edit Bar */}
-      <div className="w-full max-w-3xl -mt-6 sm:-mt-8 relative z-40 px-4">
-        <div className="bg-white/90 dark:bg-slate-800/80 backdrop-blur-xl p-3 sm:p-2 sm:pr-3 rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 flex flex-col sm:flex-row gap-2 items-center ring-1 ring-black/5 dark:ring-white/5">
+      <div className="w-full max-w-3xl relative z-40 px-4">
+        <div className="bg-white/90 dark:bg-slate-800/80 backdrop-blur-xl p-3 sm:p-2 sm:pr-3 rounded-2xl shadow-xl border border-slate-200 dark:border-white/10 flex flex-col sm:flex-row gap-2 items-center ring-1 ring-black/5 dark:ring-white/5">
             <div className="pl-4 text-cyan-600 dark:text-cyan-400 hidden sm:block">
                 <Edit3 className="w-5 h-5" />
             </div>
@@ -250,12 +261,6 @@ const Infographic: React.FC<InfographicProps> = ({ image, previousImage, onEdit,
                 </div>
             </form>
         </div>
-      </div>
-      
-      <div className="mt-8 text-center space-y-2 px-4">
-        <p className="text-xs text-slate-500 dark:text-slate-500 font-mono max-w-xl mx-auto truncate opacity-60">
-            PROMPT: {image.prompt}
-        </p>
       </div>
 
       {/* Fullscreen Modal */}
