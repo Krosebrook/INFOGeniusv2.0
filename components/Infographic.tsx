@@ -6,22 +6,26 @@
 import React, { useState } from 'react';
 import { GeneratedImage } from '../types';
 import { logError, interpretError } from '../services/errorService';
-import { Download, Sparkles, Edit3, Maximize2, X, ZoomIn, ZoomOut, SplitSquareHorizontal, Copy, Check, Info, Share2, FileDown, Clipboard } from 'lucide-react';
+import { Download, Sparkles, Edit3, Maximize2, X, ZoomIn, ZoomOut, SplitSquareHorizontal, Copy, Check, Info, Share2, FileDown, Clipboard, Layers, Package } from 'lucide-react';
+import JSZip from 'jszip';
 
 interface InfographicProps {
   image: GeneratedImage;
   previousImage?: GeneratedImage; // Optional previous version for comparison
+  variations?: GeneratedImage[]; // New: Other images in the same batch
   onEdit: (prompt: string) => void;
+  onSelectVariation?: (img: GeneratedImage) => void;
   isEditing: boolean;
 }
 
-const Infographic: React.FC<InfographicProps> = ({ image, previousImage, onEdit, isEditing }) => {
+const Infographic: React.FC<InfographicProps> = ({ image, previousImage, variations, onEdit, onSelectVariation, isEditing }) => {
   const [editPrompt, setEditPrompt] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isComparing, setIsComparing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ''});
+  const [isZipping, setIsZipping] = useState(false);
 
   const showToast = (msg: string) => {
     setToast({show: true, message: msg});
@@ -80,6 +84,41 @@ const Infographic: React.FC<InfographicProps> = ({ image, previousImage, onEdit,
         logError(err, 'Infographic.handleDownload');
         const appError = interpretError(err);
         showToast(`Download Failed: ${appError.title}`);
+    }
+  };
+
+  const handleDownloadBatch = async () => {
+    if (!variations || variations.length === 0 || isZipping) return;
+
+    try {
+        setIsZipping(true);
+        showToast("Preparing ZIP file...");
+        const zip = new JSZip();
+        
+        // Add all variations to the zip
+        await Promise.all(variations.map(async (v, index) => {
+            const response = await fetch(v.data);
+            const blob = await response.blob();
+            const filename = `variation-${index + 1}-${v.id}.png`;
+            zip.file(filename, blob);
+        }));
+
+        const content = await zip.generateAsync({ type: "blob" });
+        const url = window.URL.createObjectURL(content);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `infographic-batch-${image.batchId || Date.now()}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        showToast("Batch download complete");
+    } catch (err) {
+        logError(err, 'Infographic.handleDownloadBatch');
+        showToast("Batch download failed");
+    } finally {
+        setIsZipping(false);
     }
   };
 
@@ -172,6 +211,44 @@ const Infographic: React.FC<InfographicProps> = ({ image, previousImage, onEdit,
             )}
         </div>
       </div>
+
+      {/* Variations Gallery Strip */}
+      {variations && variations.length > 0 && (
+          <div className="w-full bg-slate-100/50 dark:bg-slate-900/50 backdrop-blur-sm border-x border-slate-200 dark:border-slate-700/50 p-2 flex gap-4 overflow-x-auto items-center">
+              <div className="flex flex-col gap-1.5 px-2 shrink-0 border-r border-slate-200/50 dark:border-white/10 pr-4 mr-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      <Layers className="w-4 h-4" />
+                      Variations
+                  </div>
+                  {variations.length > 1 && (
+                     <button 
+                        onClick={handleDownloadBatch}
+                        disabled={isZipping}
+                        className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 bg-white/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-700 px-2 py-1 rounded-md border border-slate-200/50 dark:border-white/5 transition-all disabled:opacity-50 disabled:cursor-wait"
+                        title="Download all variations as a ZIP file"
+                     >
+                        {isZipping ? <span className="animate-spin w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full"></span> : <Package className="w-3.5 h-3.5" />}
+                        Download ZIP
+                     </button>
+                  )}
+              </div>
+              <div className="flex gap-2">
+                 {variations.map((v) => (
+                     <button
+                        key={v.id}
+                        onClick={() => onSelectVariation && onSelectVariation(v)}
+                        className={`relative w-24 h-16 rounded-lg overflow-hidden border-2 transition-all shrink-0 ${
+                            v.id === image.id 
+                            ? 'border-cyan-500 ring-2 ring-cyan-500/30' 
+                            : 'border-transparent hover:border-slate-300 dark:hover:border-slate-600 opacity-60 hover:opacity-100'
+                        }`}
+                     >
+                         <img src={v.data} alt="Variation" className="w-full h-full object-cover" />
+                     </button>
+                 ))}
+              </div>
+          </div>
+      )}
 
       {/* Action Toolbar (Persistent) */}
       <div className="w-full bg-white dark:bg-slate-800 border-x border-b border-slate-200 dark:border-slate-700/50 p-2 flex flex-wrap items-center justify-between gap-2 shadow-sm rounded-b-2xl mb-4">

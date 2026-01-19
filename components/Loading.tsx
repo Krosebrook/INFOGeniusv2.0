@@ -20,44 +20,60 @@ interface FlyingItemProps {
 }
 
 const FlyingItem: React.FC<FlyingItemProps> = ({ delay, type, content, index, total }) => {
-  // Create deterministic variations based on index
-  // Use a prime number multiplier to scatter the angles more naturally (Golden Angle approx)
-  const angle = ((index * 137.5) % 360); 
+  // Enhanced "Implode" Animation Math
   
-  // Vary distance to create depth
-  const distance = 70 + (index % 4) * 15; 
+  // 1. Distribution: Use Golden Angle (137.5 deg) for organic non-overlapping placement
+  const angle = index * 137.5; 
   
-  // Vary scale more significantly for dynamic visual weight
-  const startScale = 0.6 + (index % 5) * 0.25;
+  // 2. Distance: Vary distance pseudo-randomly so they don't form a perfect circle ring
+  // Range: 55vw to 95vw from center
+  const distance = 55 + (index * 7 % 40); 
   
-  // Calculate start positions
-  const startX = Math.cos(angle * Math.PI / 180) * distance;
-  const startY = Math.sin(angle * Math.PI / 180) * distance;
+  // 3. Scale: Mix of small particles and larger chunks
+  const startScale = 0.4 + (index % 4) * 0.25; // 0.4 to 1.15
+  
+  // Convert polar to cartesian for the starting position
+  const angleRad = angle * (Math.PI / 180);
+  const startX = Math.cos(angleRad) * distance;
+  const startY = Math.sin(angleRad) * distance;
 
-  // Spin direction variation
+  // 4. Physics: Randomize rotation direction and speed
   const spinDirection = index % 2 === 0 ? 1 : -1;
+  const rotationSpeed = 1 + (index % 3) * 0.5;
+
+  // 5. Timing: Vary duration slightly so they don't loop in perfect sync
+  const duration = 4 + (index % 3) * 0.5; // 4s to 5s
 
   return (
     <div 
       className={`absolute flex items-center justify-center font-bold opacity-0 select-none ${type === 'text' ? 'text-cyan-600 dark:text-cyan-400 text-[10px] md:text-xs tracking-[0.2em] bg-white/80 dark:bg-slate-900/80 border border-cyan-500/30 px-2 py-0.5 md:px-3 md:py-1 rounded shadow-[0_0_10px_rgba(6,182,212,0.3)] backdrop-blur-sm' : 'text-amber-500 dark:text-amber-400'}`}
       style={{
-        animation: `implode-${index} 4s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite ${delay}s`,
+        // Use a custom bezier to emphasize the "Suck" effect at the end
+        animation: `implode-${index} ${duration}s cubic-bezier(0.4, 0, 0.2, 1) infinite ${delay}s`,
         zIndex: 10,
       }}
     >
       <style>{`
         @keyframes implode-${index} {
           0% { 
+            /* Start: Far out, invisible */
             transform: translate(${startX}vw, ${startY}vh) scale(${startScale}) rotate(${angle}deg); 
             opacity: 0; 
           }
-          15% { opacity: 1; }
-          60% {
-             transform: translate(0, 0) scale(0.5) rotate(${angle + (360 * spinDirection)}deg); 
-             opacity: 1;
+          10% { 
+            /* Entry: Fade in quickly, still far out */
+            opacity: 1; 
+            transform: translate(${startX * 0.95}vw, ${startY * 0.95}vh) scale(${startScale}) rotate(${angle + 10}deg);
+          }
+          55% {
+            /* HANG TIME: The "Suspension" Phase. 
+               Element drifts very slowly inward, creating tension. */
+            opacity: 1;
+            transform: translate(${startX * 0.75}vw, ${startY * 0.75}vh) scale(${startScale * 0.9}) rotate(${angle + (45 * spinDirection)}deg);
           }
           100% { 
-            transform: translate(0, 0) scale(0) rotate(${angle + (720 * spinDirection)}deg); 
+            /* IMPLOSION: Rapid suction to the center (0,0) */
+            transform: translate(0, 0) scale(0) rotate(${angle + (720 * spinDirection * rotationSpeed)}deg); 
             opacity: 0; 
           }
         }
@@ -138,7 +154,7 @@ const Loading: React.FC<LoadingProps> = ({ status, step, facts = [] }) => {
                 key={idx}
                 content={item.content} 
                 type={item.type} 
-                delay={idx * 0.3} 
+                delay={idx * 0.25} 
                 index={idx}
                 total={items.length}
              />

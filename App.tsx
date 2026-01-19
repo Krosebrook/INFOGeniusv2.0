@@ -15,7 +15,7 @@ import Infographic from './components/Infographic';
 import Loading from './components/Loading';
 import IntroScreen from './components/IntroScreen';
 import SearchResults from './components/SearchResults';
-import { Search, AlertTriangle, History, GraduationCap, Palette, Microscope, Atom, Compass, Globe, Sun, Moon, Settings, Volume2, PlayCircle, PauseCircle, Lightbulb, Trash2, BookOpen, Maximize, RefreshCcw, Camera, Smile, Feather, Zap, Box, PenTool, Grid, File, Droplet, Monitor, Square, Clock, RotateCcw, RectangleHorizontal, Info, Save, Edit3, Layers, Ghost, Hexagon, Cog, Mountain, MoonStar, Aperture, Paintbrush } from 'lucide-react';
+import { Search, AlertTriangle, History, GraduationCap, Palette, Microscope, Atom, Compass, Globe, Sun, Moon, Settings, Volume2, PlayCircle, PauseCircle, Lightbulb, Trash2, BookOpen, Maximize, RefreshCcw, Camera, Smile, Feather, Zap, Box, PenTool, Grid, File, Droplet, Monitor, Square, Clock, RotateCcw, RectangleHorizontal, Info, Save, Edit3, Layers, Ghost, Hexagon, Cog, Mountain, MoonStar, Aperture, Paintbrush, Copy, LayoutGrid } from 'lucide-react';
 
 // Style Options Definition with Colors
 const STYLE_OPTIONS: { value: VisualStyle, icon: any, label: string, color: string }[] = [
@@ -51,6 +51,7 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('English');
   const [imageQuality, setImageQuality] = useState<ImageQuality>('1K');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('1:1');
+  const [variationCount, setVariationCount] = useState<number>(1); // New: Number of images to generate
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
@@ -88,9 +89,22 @@ const App: React.FC = () => {
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-        // Ignore if focus is on an input or textarea
-        if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+        const target = e.target as HTMLElement;
+        const isInput = ['INPUT', 'TEXTAREA'].includes(target.tagName);
 
+        // Global Shortcut: Ctrl+Enter or Cmd+Enter to Generate
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault(); // Prevent default if inside a text area
+            if (!isLoading && topic.trim()) {
+                initiateGeneration(topic);
+            }
+            return;
+        }
+
+        // The following shortcuts are disabled when typing in an input
+        if (isInput) return;
+
+        // Toggle Dark Mode
         if (e.key.toLowerCase() === 'd') {
             setIsDarkMode(prev => !prev);
         }
@@ -98,15 +112,18 @@ const App: React.FC = () => {
         // History Navigation Shortcuts
         if (imageHistory.length > 1 && !isLoading) {
             if (e.key === 'ArrowRight') {
-               // Restore the next item in history (go back in time)
+               // Move older item (index 1) to top
                restoreImage(imageHistory[1]);
+            } else if (e.key === 'ArrowLeft') {
+               // Move oldest item (last) to top, allowing cyclic navigation
+               restoreImage(imageHistory[imageHistory.length - 1]);
             }
         }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isDarkMode, imageHistory, isLoading]);
+  }, [isDarkMode, imageHistory, isLoading, topic]); // Added topic to dependencies
 
   // Click Outside to close Menus
   useEffect(() => {
@@ -159,6 +176,7 @@ const App: React.FC = () => {
             if (parsed.imageQuality) setImageQuality(parsed.imageQuality);
             if (parsed.aspectRatio) setAspectRatio(parsed.aspectRatio);
             if (parsed.isDarkMode !== undefined) setIsDarkMode(parsed.isDarkMode);
+            if (parsed.variationCount) setVariationCount(parsed.variationCount);
         } catch (e) {
             logError(e, 'LocalStorageLoadSettings');
         }
@@ -173,14 +191,15 @@ const App: React.FC = () => {
         language,
         imageQuality,
         aspectRatio,
-        isDarkMode
+        isDarkMode,
+        variationCount
     };
     try {
         localStorage.setItem('infoGeniusSettings', JSON.stringify(settings));
     } catch (e) {
         console.warn("Failed to save settings to localStorage");
     }
-  }, [complexityLevel, visualStyle, language, imageQuality, aspectRatio, isDarkMode]);
+  }, [complexityLevel, visualStyle, language, imageQuality, aspectRatio, isDarkMode, variationCount]);
 
   // Save to Local Storage with Quota Handling
   useEffect(() => {
@@ -222,7 +241,8 @@ const App: React.FC = () => {
         language,
         imageQuality,
         aspectRatio,
-        isDarkMode
+        isDarkMode,
+        variationCount
     };
     localStorage.setItem('infoGeniusSettings', JSON.stringify(settings));
     showToast("Preferences saved as default.");
@@ -236,6 +256,7 @@ const App: React.FC = () => {
         setLanguage('English');
         setImageQuality('1K');
         setAspectRatio('1:1');
+        setVariationCount(1);
         showToast("Default settings loaded.");
     }
     setIsSettingsMenuOpen(false);
@@ -310,14 +331,21 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setLoadingStep(2);
-    setLoadingMessage(`Designing Infographic...`);
+    setLoadingMessage(variationCount > 1 ? `Designing ${variationCount} Variations...` : `Designing Infographic...`);
     setPendingPrompt(null);
 
+    const batchId = Date.now().toString();
+
     try {
-      const base64Data = await generateInfographicImage(finalPrompt, imageQuality, aspectRatio);
+      // Generate multiple variations if requested
+      const promises = Array.from({ length: variationCount }).map(() => 
+        generateInfographicImage(finalPrompt, imageQuality, aspectRatio)
+      );
+
+      const results = await Promise.all(promises);
       
-      const newImage: GeneratedImage = {
-        id: Date.now().toString(),
+      const newImages: GeneratedImage[] = results.map((base64Data, index) => ({
+        id: `${batchId}-${index}`,
         data: base64Data,
         prompt: originalTopic,
         timestamp: Date.now(),
@@ -327,10 +355,12 @@ const App: React.FC = () => {
         quality: imageQuality,
         relatedTopics: suggestions.length > 0 ? suggestions : currentSuggestions,
         facts: facts.length > 0 ? facts : loadingFacts,
-        audioUrl: audioBase64 || undefined
-      };
+        audioUrl: audioBase64 || undefined,
+        batchId: batchId // Group ID
+      }));
 
-      setImageHistory([newImage, ...imageHistory]);
+      // Add all to history (newest first)
+      setImageHistory([...newImages.reverse(), ...imageHistory]);
       setIsLoading(false);
       setLoadingStep(0);
     } catch (err: any) {
@@ -361,7 +391,8 @@ const App: React.FC = () => {
         parentImageId: currentImage.id, // Track parent for comparison
         relatedTopics: currentImage.relatedTopics,
         facts: currentImage.facts, // Preserve facts on edit
-        audioUrl: currentImage.audioUrl
+        audioUrl: currentImage.audioUrl,
+        batchId: Date.now().toString() // New edit is its own batch
       };
       setImageHistory([newImage, ...imageHistory]);
       setIsLoading(false);
@@ -645,7 +676,7 @@ const App: React.FC = () => {
                     </div>
 
                     {/* Controls Bar - Responsive Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 p-2 mt-2 relative">
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-2 p-2 mt-2 relative">
                     
                     {/* Level Selector */}
                     <div className="col-span-1 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-white/5 px-3 py-2 flex items-center gap-2 hover:border-cyan-500/30 transition-colors relative overflow-hidden group/item">
@@ -753,13 +784,13 @@ const App: React.FC = () => {
                         </div>
                     </div>
 
-                     {/* Aspect Ratio Selector (New) */}
+                     {/* Aspect Ratio Selector (Modified Label) */}
                      <div className="col-span-1 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-white/5 px-3 py-2 flex items-center gap-2 hover:border-orange-500/30 transition-colors relative overflow-hidden group/item">
                          <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg text-orange-600 dark:text-orange-400 shrink-0 shadow-sm">
                             <RectangleHorizontal className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex flex-col z-10 w-full overflow-hidden">
-                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Format</label>
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Dimensions</label>
                             <select 
                                 value={aspectRatio} 
                                 onChange={(e) => setAspectRatio(e.target.value as AspectRatio)}
@@ -774,6 +805,26 @@ const App: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* Variations Count Selector (New) */}
+                    <div className="col-span-1 bg-slate-50 dark:bg-slate-950/50 rounded-2xl border border-slate-200 dark:border-white/5 px-3 py-2 flex items-center gap-2 hover:border-indigo-500/30 transition-colors relative overflow-hidden group/item">
+                         <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg text-indigo-600 dark:text-indigo-400 shrink-0 shadow-sm">
+                            <LayoutGrid className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex flex-col z-10 w-full overflow-hidden">
+                            <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Count</label>
+                            <select 
+                                value={variationCount} 
+                                onChange={(e) => setVariationCount(Number(e.target.value))}
+                                className="bg-transparent border-none text-sm font-bold text-slate-900 dark:text-slate-100 focus:ring-0 cursor-pointer p-0 w-full hover:text-indigo-600 dark:hover:text-indigo-300 transition-colors truncate [&>option]:bg-white [&>option]:text-slate-900 dark:[&>option]:bg-slate-900 dark:[&>option]:text-slate-100"
+                            >
+                                <option value={1}>Single (1)</option>
+                                <option value={2}>Double (2)</option>
+                                <option value={3}>Triple (3)</option>
+                                <option value={4}>Quad (4)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     </div>
                     
                     {/* Generate Button (Full Width below selectors) */}
@@ -784,7 +835,7 @@ const App: React.FC = () => {
                             className="w-full h-14 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-2xl font-bold font-display tracking-wide hover:brightness-110 transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                         >
                             {isLoading ? <span className="animate-spin w-5 h-5 border-2 border-white/30 border-t-white rounded-full"></span> : <Microscope className="w-5 h-5" />}
-                            <span>INITIATE SEQUENCE</span>
+                            <span>INITIATE {variationCount > 1 ? `BATCH (${variationCount})` : 'SEQUENCE'}</span>
                         </button>
                     </div>
 
@@ -822,7 +873,10 @@ const App: React.FC = () => {
                 <Infographic 
                     image={imageHistory[0]} 
                     previousImage={imageHistory.find(img => img.id === imageHistory[0].parentImageId)}
+                    // Pass all images from history that share the same batch ID as the current image
+                    variations={imageHistory.filter(img => img.batchId && img.batchId === imageHistory[0].batchId)}
                     onEdit={handleEdit} 
+                    onSelectVariation={restoreImage}
                     isEditing={isLoading}
                 />
                 
@@ -932,6 +986,12 @@ const App: React.FC = () => {
 
                                 {/* Actions Overlay - Top Right */}
                                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 z-20">
+                                     {/* Variation Indicator Badge */}
+                                     {img.batchId && (
+                                         <div className="absolute top-0 right-10 -mr-2 bg-indigo-500/80 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full pointer-events-none shadow-sm">
+                                             VAR
+                                         </div>
+                                     )}
                                      <button
                                         onClick={(e) => { e.stopPropagation(); restoreImage(img); }}
                                         className="p-2 bg-slate-900/50 hover:bg-white text-white hover:text-cyan-600 rounded-full backdrop-blur-md transition-all shadow-lg border border-white/10"

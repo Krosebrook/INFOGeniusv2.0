@@ -48,6 +48,7 @@ export interface GeneratedImage {
   facts?: string[]; // New: Store the researched facts
   audioUrl?: string;
   parentImageId?: string;
+  batchId?: string; // New: Group ID for multiple variations generated together
 }
 
 export interface SearchResultItem {
