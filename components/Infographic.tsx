@@ -1,7 +1,16 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
+ * 
+ * Infographic.tsx
+ * Displays the generated image with interactive features:
+ * - Zoom & Pan (Fullscreen)
+ * - Comparison slider (Before/After)
+ * - Variation selection
+ * - Editing/Enhancement input
+ * - Export options (Copy, Download, Share)
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import { GeneratedImage } from '../types';
 import { logError, interpretError } from '../services/errorService';
@@ -118,7 +127,7 @@ const Infographic: React.FC<InfographicProps> = ({ image, previousImage, variati
     }
   };
 
-  // Draggable logic
+  // Draggable logic for slider
   const handleMove = (clientX: number) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();

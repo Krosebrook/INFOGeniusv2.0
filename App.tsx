@@ -1,8 +1,14 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
-import React, { useState, useEffect, useRef } from 'react';
+ * 
+ * App.tsx
+ * Main application component for InfoGenius Vision.
+ * Handles state management for image generation history, user settings, 
+ * navigation, and coordination between research and generation services.
+ */
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GeneratedImage, ComplexityLevel, VisualStyle, Language, SearchResultItem, ImageQuality, AspectRatio } from './types';
 import { 
   researchTopicForPrompt, 
@@ -17,7 +23,9 @@ import IntroScreen from './components/IntroScreen';
 import SearchResults from './components/SearchResults';
 import HelpModal from './components/HelpModal';
 import AboutModal from './components/AboutModal';
-import { Search, AlertTriangle, History, GraduationCap, Palette, Microscope, Atom, Compass, Globe, Sun, Moon, Settings, Volume2, PlayCircle, PauseCircle, Lightbulb, Trash2, BookOpen, Maximize, RefreshCcw, Camera, Smile, Feather, Zap, Box, PenTool, Grid, File, Droplet, Monitor, Square, Clock, RotateCcw, RectangleHorizontal, Info, Save, Edit3, Layers, Ghost, Hexagon, Cog, Mountain, MoonStar, Aperture, Paintbrush, Copy, LayoutGrid, X, HelpCircle, BookmarkPlus, Bookmark, CheckCircle2, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Search, AlertTriangle, History, GraduationCap, Palette, Microscope, Atom, Compass, Globe, Sun, Moon, Settings, Volume2, PlayCircle, PauseCircle, Lightbulb, Trash2, BookOpen, Maximize, RefreshCcw, Camera, Smile, Feather, Zap, Box, PenTool, Grid, File, Droplet, Monitor, Square, Clock, RotateCcw, RectangleHorizontal, Info, Save, Edit3, Layers, Ghost, Hexagon, Cog, Mountain, MoonStar, Aperture, Paintbrush, LayoutGrid, X, HelpCircle, BookmarkPlus, Bookmark, CheckCircle2, ChevronDown, ChevronUp, FileText, DraftingCompass, Brush, Gem, Eye, Scissors } from 'lucide-react';
+
+// --- Configuration & Constants ---
 
 interface Preset {
   name: string;
@@ -54,10 +62,24 @@ const STYLE_OPTIONS: { value: VisualStyle, icon: any, label: string, color: stri
   { value: 'Sketch', icon: PenTool, label: 'Blueprint', color: 'text-blue-800 bg-blue-100' },
   { value: 'Flat Art', icon: Monitor, label: 'Flat Design', color: 'text-green-600 bg-green-50' },
   { value: 'Futuristic', icon: Atom, label: 'Cyberpunk', color: 'text-violet-500 bg-slate-900' },
+  { value: 'Blueprint', icon: DraftingCompass, label: 'Blueprint', color: 'text-blue-100 bg-blue-600' },
+  { value: 'Oil Painting', icon: Brush, label: 'Oil Painting', color: 'text-amber-700 bg-amber-200' },
+  { value: 'Art Deco', icon: Gem, label: 'Art Deco', color: 'text-yellow-400 bg-slate-900' },
+  { value: 'Psychedelic', icon: Eye, label: 'Psychedelic', color: 'text-fuchsia-900 bg-fuchsia-300' },
+  { value: 'Papercut', icon: Scissors, label: 'Papercut', color: 'text-rose-600 bg-rose-100' },
 ];
 
 const App: React.FC = () => {
+  // --- UI State ---
   const [showIntro, setShowIntro] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
+  const [loadingStep, setLoadingStep] = useState<number>(0);
+  const [loadingFacts, setLoadingFacts] = useState<string[]>([]);
+  const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ''});
+  const [error, setError] = useState<AppError | null>(null);
+  
+  // --- Configuration State ---
   const [topic, setTopic] = useState('');
   const [complexityLevel, setComplexityLevel] = useState<ComplexityLevel>('High School');
   const [visualStyle, setVisualStyle] = useState<VisualStyle>('Default');
@@ -65,62 +87,189 @@ const App: React.FC = () => {
   const [imageQuality, setImageQuality] = useState<ImageQuality>('1K');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('1:1');
   const [variationCount, setVariationCount] = useState<number>(1);
+  
+  // --- Application Mode State ---
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  
+  // --- Menu Visibility State ---
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isLogExpanded, setIsLogExpanded] = useState(false);
   
+  // --- Data State ---
   const [presets, setPresets] = useState<Preset[]>([]);
   const [newPresetName, setNewPresetName] = useState('');
   const [isSavingPreset, setIsSavingPreset] = useState(false);
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('');
-  const [loadingStep, setLoadingStep] = useState<number>(0);
-  const [loadingFacts, setLoadingFacts] = useState<string[]>([]);
-  
-  const [error, setError] = useState<AppError | null>(null);
-  const [retryAction, setRetryAction] = useState<(() => void) | null>(null);
   
   const [imageHistory, setImageHistory] = useState<GeneratedImage[]>([]);
   const [currentSearchResults, setCurrentSearchResults] = useState<SearchResultItem[]>([]);
   const [currentSuggestions, setCurrentSuggestions] = useState<string[]>([]);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  
+  const [retryAction, setRetryAction] = useState<(() => void) | null>(null);
 
+  // --- Audio State ---
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+
+  // --- Refs ---
   const styleMenuRef = useRef<HTMLDivElement>(null);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
 
-  const [toast, setToast] = useState<{show: boolean, message: string}>({show: false, message: ''});
+  // --- Helpers ---
 
+  const showToast = useCallback((message: string) => {
+    setToast({ show: true, message });
+    setTimeout(() => setToast({ show: false, message: '' }), 3000);
+  }, []);
+
+  const restoreImage = useCallback((img: GeneratedImage) => {
+    if (audioSourceRef.current) {
+        try { audioSourceRef.current.stop(); } catch(e) {}
+        audioSourceRef.current = null;
+    }
+    setIsPlayingAudio(false);
+
+    if (img.level) setComplexityLevel(img.level);
+    if (img.style) setVisualStyle(img.style);
+    if (img.language) setLanguage(img.language);
+    if (img.quality) setImageQuality(img.quality);
+    if (img.aspectRatio) setAspectRatio(img.aspectRatio);
+    setTopic(img.prompt);
+    
+    // Move the restored image to the top of the history stack
+    const newHistory = imageHistory.filter(i => i.id !== img.id);
+    setImageHistory([img, ...newHistory]);
+    
+    if (img.relatedTopics) setCurrentSuggestions(img.relatedTopics);
+    if (img.audioUrl) setAudioBase64(img.audioUrl);
+    
+    showToast(`Restored: ${img.prompt}`);
+  }, [imageHistory, showToast]);
+
+  const initiateGeneration = useCallback(async (searchTopic: string) => {
+    setIsLoading(true);
+    setError(null);
+    setRetryAction(null);
+    setLoadingStep(1);
+    setLoadingFacts([]);
+    setCurrentSearchResults([]);
+    setCurrentSuggestions([]);
+    setPendingPrompt(null);
+    setAudioBase64(null);
+    if (audioSourceRef.current) {
+        try { audioSourceRef.current.stop(); } catch(e) {}
+    }
+    setIsPlayingAudio(false);
+    setLoadingMessage(`Researching "${searchTopic}"...`);
+
+    try {
+      const researchResult = await researchTopicForPrompt(searchTopic, complexityLevel, visualStyle, language);
+      setLoadingFacts(researchResult.facts);
+      setCurrentSearchResults(researchResult.searchResults);
+      setCurrentSuggestions(researchResult.suggestions);
+
+      if (researchResult.facts.length > 0) {
+        generateNarration(researchResult.facts.join(". "), language)
+          .then(audio => setAudioBase64(audio))
+          .catch(e => logError(e, 'AudioBackgroundGeneration'));
+      }
+
+      if (isAdvancedMode) {
+        setPendingPrompt(researchResult.imagePrompt);
+        setLoadingMessage("Waiting for user approval...");
+        setIsLoading(false);
+      } else {
+        await executeImageGeneration(researchResult.imagePrompt, searchTopic, researchResult.suggestions, researchResult.facts);
+      }
+    } catch (err: any) {
+      logError(err, 'ResearchPhase');
+      const interpreted = interpretError(err);
+      setError(interpreted);
+      setRetryAction(() => () => initiateGeneration(searchTopic));
+      setIsLoading(false);
+    }
+  }, [complexityLevel, visualStyle, language, isAdvancedMode]); // Removed executeImageGeneration from deps to avoid circular ref issue, will define it below
+
+  const executeImageGeneration = async (finalPrompt: string, originalTopic: string, suggestions: string[] = [], facts: string[] = []) => {
+    setIsLoading(true);
+    setError(null);
+    setLoadingStep(2);
+    setLoadingMessage(variationCount > 1 ? `Designing ${variationCount} Variations...` : `Designing Infographic...`);
+    setPendingPrompt(null);
+    const batchId = Date.now().toString();
+
+    try {
+      const promises = Array.from({ length: variationCount }).map(() => 
+        generateInfographicImage(finalPrompt, imageQuality, aspectRatio)
+      );
+      const results = await Promise.all(promises);
+      const newImages: GeneratedImage[] = results.map((base64Data, index) => ({
+        id: `${batchId}-${index}`,
+        data: base64Data,
+        prompt: originalTopic,
+        timestamp: Date.now(),
+        level: complexityLevel,
+        style: visualStyle,
+        language: language,
+        quality: imageQuality,
+        relatedTopics: suggestions.length > 0 ? suggestions : currentSuggestions,
+        facts: facts.length > 0 ? facts : loadingFacts,
+        audioUrl: audioBase64 || undefined,
+        batchId: batchId,
+        aspectRatio: aspectRatio
+      }));
+      setImageHistory(prev => [...newImages.reverse(), ...prev]);
+      setIsLoading(false);
+      setLoadingStep(0);
+    } catch (err: any) {
+      logError(err, 'ImageGeneration');
+      const interpreted = interpretError(err);
+      setError(interpreted);
+      setRetryAction(() => () => executeImageGeneration(finalPrompt, originalTopic, suggestions, facts));
+      setIsLoading(false);
+    }
+  };
+
+  // --- Effects ---
+
+  // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         const target = e.target as HTMLElement;
         const isInput = ['INPUT', 'TEXTAREA'].includes(target.tagName);
 
+        // Generation Trigger (Ctrl/Cmd + Enter)
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
             e.preventDefault();
-            if (!isLoading && topic.trim()) initiateGeneration(topic);
+            if (pendingPrompt) {
+                // If in Director Mode review
+                executeImageGeneration(pendingPrompt, topic, currentSuggestions, loadingFacts);
+            } else if (!isLoading && topic.trim() && !isInput) {
+                // If main input has focus or globally if topic is set
+                initiateGeneration(topic);
+            }
             return;
         }
 
         if (isInput) return;
 
+        // Dark Mode Toggle
         if (e.key.toLowerCase() === 'd') setIsDarkMode(prev => !prev);
         
-        // History Navigation Shortcuts
-        if (isLogExpanded && imageHistory.length > 1 && !isLoading) {
+        // History Navigation
+        // Only active if we have history and aren't currently generating
+        if (imageHistory.length > 1 && !isLoading) {
             if (e.key === 'ArrowLeft') {
-               // Restore previous (older) image in history stack
+               // Restore previous (2nd item in stack becomes 1st)
                restoreImage(imageHistory[1]);
             } else if (e.key === 'ArrowRight') {
-               // Restore "next" image - in this stack model, effectively wrapping to the oldest or just cycling
+               // Restore oldest (wraps around)
                restoreImage(imageHistory[imageHistory.length - 1]);
             }
         }
@@ -128,8 +277,9 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isDarkMode, imageHistory, isLoading, topic, isLogExpanded]);
+  }, [isDarkMode, imageHistory, isLoading, topic, isLogExpanded, pendingPrompt, initiateGeneration, restoreImage, currentSuggestions, loadingFacts]);
 
+  // Click Outside Handlers for Menus
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (styleMenuRef.current && !styleMenuRef.current.contains(event.target as Node)) setIsStyleMenuOpen(false);
@@ -139,58 +289,61 @@ const App: React.FC = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Theme Sync
   useEffect(() => {
     if (isDarkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [isDarkMode]);
 
+  // Load from LocalStorage
   useEffect(() => {
-    const savedHistory = localStorage.getItem('infoGeniusHistory');
-    if (savedHistory) {
-      try {
-        const parsed = JSON.parse(savedHistory);
-        setImageHistory(parsed);
-      } catch (e) { logError(e, 'LocalStorageLoadHistory'); }
-    }
-    const savedPresets = localStorage.getItem('infoGeniusPresets');
-    if (savedPresets) {
-      try { setPresets(JSON.parse(savedPresets)); } catch (e) { logError(e, 'LocalStorageLoadPresets'); }
-    }
-    const savedMode = localStorage.getItem('infoGeniusAdvanced');
-    if (savedMode) setIsAdvancedMode(savedMode === 'true');
-    const savedSettings = localStorage.getItem('infoGeniusSettings');
-    if (savedSettings) {
+    const loadStorage = () => {
         try {
-            const parsed = JSON.parse(savedSettings);
-            if (parsed.complexityLevel) setComplexityLevel(parsed.complexityLevel);
-            if (parsed.visualStyle) setVisualStyle(parsed.visualStyle);
-            if (parsed.language) setLanguage(parsed.language);
-            if (parsed.imageQuality) setImageQuality(parsed.imageQuality);
-            if (parsed.aspectRatio) setAspectRatio(parsed.aspectRatio);
-            if (parsed.isDarkMode !== undefined) setIsDarkMode(parsed.isDarkMode);
-            if (parsed.variationCount) setVariationCount(parsed.variationCount);
-        } catch (e) { logError(e, 'LocalStorageLoadSettings'); }
-    }
+            const savedHistory = localStorage.getItem('infoGeniusHistory');
+            if (savedHistory) setImageHistory(JSON.parse(savedHistory));
+
+            const savedPresets = localStorage.getItem('infoGeniusPresets');
+            if (savedPresets) setPresets(JSON.parse(savedPresets));
+
+            const savedMode = localStorage.getItem('infoGeniusAdvanced');
+            if (savedMode) setIsAdvancedMode(savedMode === 'true');
+
+            const savedSettings = localStorage.getItem('infoGeniusSettings');
+            if (savedSettings) {
+                const parsed = JSON.parse(savedSettings);
+                if (parsed.complexityLevel) setComplexityLevel(parsed.complexityLevel);
+                if (parsed.visualStyle) setVisualStyle(parsed.visualStyle);
+                if (parsed.language) setLanguage(parsed.language);
+                if (parsed.imageQuality) setImageQuality(parsed.imageQuality);
+                if (parsed.aspectRatio) setAspectRatio(parsed.aspectRatio);
+                if (parsed.isDarkMode !== undefined) setIsDarkMode(parsed.isDarkMode);
+                if (parsed.variationCount) setVariationCount(Math.min(Math.max(parsed.variationCount, 1), 4));
+            }
+        } catch (e) {
+            logError(e, 'LocalStorageLoad');
+        }
+    };
+    loadStorage();
   }, []);
 
+  // Save to LocalStorage
   useEffect(() => {
     const settings = { complexityLevel, visualStyle, language, imageQuality, aspectRatio, isDarkMode, variationCount };
     try { localStorage.setItem('infoGeniusSettings', JSON.stringify(settings)); } catch (e) {}
   }, [complexityLevel, visualStyle, language, imageQuality, aspectRatio, isDarkMode, variationCount]);
 
   useEffect(() => {
-    const saveToStorage = (items: GeneratedImage[]) => {
-      try { localStorage.setItem('infoGeniusHistory', JSON.stringify(items)); } catch (e) {
-        if (items.length > 1) saveToStorage(items.slice(0, Math.ceil(items.length / 2)));
-      }
-    };
-    saveToStorage(imageHistory.slice(0, 10));
+    try { 
+        // Limit history size to prevent LocalStorage quota exceeded errors
+        const limitedHistory = imageHistory.slice(0, 10);
+        localStorage.setItem('infoGeniusHistory', JSON.stringify(limitedHistory)); 
+    } catch (e) {
+        logError(e, 'HistorySave');
+    }
   }, [imageHistory]);
 
-  const showToast = (message: string) => {
-    setToast({ show: true, message });
-    setTimeout(() => setToast({ show: false, message: '' }), 3000);
-  };
+
+  // --- Event Handlers ---
 
   const handleSavePreset = () => {
     if (!newPresetName.trim()) {
@@ -261,87 +414,6 @@ const App: React.FC = () => {
     initiateGeneration(suggestion);
   }
 
-  const initiateGeneration = async (searchTopic: string) => {
-    setIsLoading(true);
-    setError(null);
-    setRetryAction(null);
-    setLoadingStep(1);
-    setLoadingFacts([]);
-    setCurrentSearchResults([]);
-    setCurrentSuggestions([]);
-    setPendingPrompt(null);
-    setAudioBase64(null);
-    stopAudio();
-    setLoadingMessage(`Researching "${searchTopic}"...`);
-
-    try {
-      const researchResult = await researchTopicForPrompt(searchTopic, complexityLevel, visualStyle, language);
-      setLoadingFacts(researchResult.facts);
-      setCurrentSearchResults(researchResult.searchResults);
-      setCurrentSuggestions(researchResult.suggestions);
-
-      if (researchResult.facts.length > 0) {
-        generateNarration(researchResult.facts.join(". "), language)
-          .then(audio => setAudioBase64(audio))
-          .catch(e => logError(e, 'AudioBackgroundGeneration'));
-      }
-
-      if (isAdvancedMode) {
-        setPendingPrompt(researchResult.imagePrompt);
-        setLoadingMessage("Waiting for user approval...");
-        setIsLoading(false);
-      } else {
-        await executeImageGeneration(researchResult.imagePrompt, searchTopic, researchResult.suggestions, researchResult.facts);
-      }
-    } catch (err: any) {
-      logError(err, 'ResearchPhase');
-      const interpreted = interpretError(err);
-      setError(interpreted);
-      setRetryAction(() => () => initiateGeneration(searchTopic));
-      setIsLoading(false);
-    }
-  };
-
-  const executeImageGeneration = async (finalPrompt: string, originalTopic: string, suggestions: string[] = [], facts: string[] = []) => {
-    setIsLoading(true);
-    setError(null);
-    setLoadingStep(2);
-    setLoadingMessage(variationCount > 1 ? `Designing ${variationCount} Variations...` : `Designing Infographic...`);
-    setPendingPrompt(null);
-    const batchId = Date.now().toString();
-
-    try {
-      const promises = Array.from({ length: variationCount }).map(() => 
-        generateInfographicImage(finalPrompt, imageQuality, aspectRatio)
-      );
-      const results = await Promise.all(promises);
-      const newImages: GeneratedImage[] = results.map((base64Data, index) => ({
-        id: `${batchId}-${index}`,
-        data: base64Data,
-        prompt: originalTopic,
-        timestamp: Date.now(),
-        level: complexityLevel,
-        style: visualStyle,
-        language: language,
-        quality: imageQuality,
-        relatedTopics: suggestions.length > 0 ? suggestions : currentSuggestions,
-        facts: facts.length > 0 ? facts : loadingFacts,
-        audioUrl: audioBase64 || undefined,
-        batchId: batchId,
-        aspectRatio: aspectRatio
-      }));
-      setImageHistory([...newImages.reverse(), ...imageHistory]);
-      setIsLoading(false);
-      setLoadingStep(0);
-    } catch (err: any) {
-      logError(err, 'ImageGeneration');
-      const interpreted = interpretError(err);
-      setError(interpreted);
-      setRetryAction(() => () => executeImageGeneration(finalPrompt, originalTopic, suggestions, facts));
-      setIsLoading(false);
-    }
-  };
-
   const handleEdit = async (editPrompt: string) => {
     if (imageHistory.length === 0) return;
     const currentImage = imageHistory[0];
@@ -367,7 +439,7 @@ const App: React.FC = () => {
         batchId: Date.now().toString(),
         aspectRatio: aspectRatio
       };
-      setImageHistory([newImage, ...imageHistory]);
+      setImageHistory(prev => [newImage, ...prev]);
       setIsLoading(false);
       setLoadingStep(0);
     } catch (err: any) {
@@ -379,27 +451,16 @@ const App: React.FC = () => {
     }
   };
 
-  const restoreImage = (img: GeneratedImage) => {
-     stopAudio();
-     if (img.level) setComplexityLevel(img.level);
-     if (img.style) setVisualStyle(img.style);
-     if (img.language) setLanguage(img.language);
-     if (img.quality) setImageQuality(img.quality);
-     if (img.aspectRatio) setAspectRatio(img.aspectRatio);
-     setTopic(img.prompt);
-     const newHistory = imageHistory.filter(i => i.id !== img.id);
-     setImageHistory([img, ...newHistory]);
-     if (img.relatedTopics) setCurrentSuggestions(img.relatedTopics);
-     if (img.audioUrl) setAudioBase64(img.audioUrl);
-     showToast(`Restored: ${img.prompt}`);
-  };
-
   const clearHistory = () => {
     if (window.confirm("Are you sure you want to clear your entire history? This cannot be undone.")) {
       setImageHistory([]);
       localStorage.removeItem('infoGeniusHistory');
       setAudioBase64(null);
-      stopAudio();
+      if (audioSourceRef.current) {
+        try { audioSourceRef.current.stop(); } catch(e) {}
+        audioSourceRef.current = null;
+      }
+      setIsPlayingAudio(false);
       showToast("History cleared.");
     }
   };
@@ -409,14 +470,25 @@ const App: React.FC = () => {
     const newHistory = imageHistory.filter(img => img.id !== id);
     setImageHistory(newHistory);
     if (imageHistory[0] && imageHistory[0].id === id) {
-        stopAudio();
+        if (audioSourceRef.current) {
+            try { audioSourceRef.current.stop(); } catch(e) {}
+            audioSourceRef.current = null;
+        }
+        setIsPlayingAudio(false);
         setAudioBase64(null);
     }
   };
 
   const toggleAudio = async () => {
-    if (isPlayingAudio) stopAudio();
-    else if (audioBase64) playAudio(audioBase64);
+    if (isPlayingAudio) {
+        if (audioSourceRef.current) {
+            try { audioSourceRef.current.stop(); } catch(e) {}
+            audioSourceRef.current = null;
+        }
+        setIsPlayingAudio(false);
+    } else if (audioBase64) {
+        playAudio(audioBase64);
+    }
   };
 
   const playAudio = async (base64: string) => {
@@ -429,7 +501,13 @@ const App: React.FC = () => {
       const len = binaryString.length;
       const bytes = new Uint8Array(len);
       for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
-      const buffer = await decodeAudioData(bytes, ctx);
+      
+      const dataInt16 = new Int16Array(bytes.buffer);
+      const frameCount = dataInt16.length;
+      const buffer = ctx.createBuffer(1, frameCount, 24000);
+      const channelData = buffer.getChannelData(0);
+      for (let i = 0; i < frameCount; i++) channelData[i] = dataInt16[i] / 32768.0;
+
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(ctx.destination);
@@ -440,24 +518,7 @@ const App: React.FC = () => {
     } catch (e) { logError(e, 'AudioPlayback'); }
   };
 
-  const stopAudio = () => {
-    if (audioSourceRef.current) {
-      try { audioSourceRef.current.stop(); } catch(e) {}
-      audioSourceRef.current = null;
-    }
-    setIsPlayingAudio(false);
-  };
-
-  async function decodeAudioData(data: Uint8Array, ctx: AudioContext): Promise<AudioBuffer> {
-    const dataInt16 = new Int16Array(data.buffer);
-    const numChannels = 1;
-    const sampleRate = 24000;
-    const frameCount = dataInt16.length;
-    const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-    const channelData = buffer.getChannelData(0);
-    for (let i = 0; i < frameCount; i++) channelData[i] = dataInt16[i] / 32768.0;
-    return buffer;
-  }
+  // --- Render ---
 
   return (
     <>
@@ -581,27 +642,35 @@ const App: React.FC = () => {
                                     </div>
 
                                     {/* Variation Count */}
-                                    <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10 transition-all">
-                                         <div className="flex items-center gap-3">
-                                            <div className={`p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 transition-colors`}>
-                                                <LayoutGrid className="w-5 h-5" />
+                                    <div className="flex flex-col gap-2 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10 transition-all">
+                                         <div className="flex items-center justify-between">
+                                             <div className="flex items-center gap-3">
+                                                <div className={`p-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 transition-colors`}>
+                                                    <LayoutGrid className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">Variations</div>
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Images per generation</div>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">Variations</div>
-                                                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Images per generation</div>
+                                            <div className="flex items-center bg-white dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-white/10">
+                                                {[1, 2, 3, 4].map(num => (
+                                                    <button 
+                                                        key={num}
+                                                        onClick={() => setVariationCount(num)}
+                                                        className={`w-8 h-8 rounded-md text-xs font-bold transition-all ${variationCount === num ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                                    >
+                                                        {num}
+                                                    </button>
+                                                ))}
                                             </div>
                                         </div>
-                                        <div className="flex items-center bg-white dark:bg-slate-800 rounded-lg p-1 border border-slate-200 dark:border-white/10">
-                                            {[1, 2, 3, 4].map(num => (
-                                                <button 
-                                                    key={num}
-                                                    onClick={() => setVariationCount(num)}
-                                                    className={`w-8 h-8 rounded-md text-xs font-bold transition-all ${variationCount === num ? 'bg-cyan-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                                                >
-                                                    {num}
-                                                </button>
-                                            ))}
-                                        </div>
+                                        {variationCount > 1 && (
+                                            <div className="flex items-center gap-2 text-[10px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg border border-amber-100 dark:border-amber-900/30 animate-in fade-in slide-in-from-top-1">
+                                                <Clock className="w-3 h-3" />
+                                                <span>Generating {variationCount} variations will increase processing time.</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </section>

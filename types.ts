@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -29,7 +28,12 @@ export type VisualStyle =
   | 'Graffiti'
   | 'Noir'
   | 'Stained Glass'
-  | 'Claymation';
+  | 'Claymation'
+  | 'Blueprint'
+  | 'Oil Painting'
+  | 'Art Deco'
+  | 'Psychedelic'
+  | 'Papercut';
 
 export type Language = 'English' | 'Spanish' | 'French' | 'German' | 'Mandarin' | 'Japanese' | 'Hindi' | 'Arabic' | 'Portuguese' | 'Russian';
 

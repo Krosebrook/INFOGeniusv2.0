@@ -1,21 +1,29 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
-*/
+ * 
+ * geminiService.ts
+ * Service layer for interacting with Google GenAI API.
+ * Handles:
+ * - Text generation with search grounding (Gemini 3 Pro)
+ * - Image generation (Gemini 3 Pro Image)
+ * - Text-to-speech (Gemini 2.5 Flash TTS)
+ */
 import { GoogleGenAI, Modality } from "@google/genai";
 import { ComplexityLevel, VisualStyle, ResearchResult, SearchResultItem, Language, ImageQuality, AspectRatio } from "../types";
 import { logError } from "./errorService";
 
-// Create a fresh client for every request to ensure the latest API key from process.env.API_KEY is used
+// Helper to get a fresh client instance with the latest API key
 const getAi = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
-// Models
+// --- Models ---
 const TEXT_MODEL = 'gemini-3-pro-preview';
 const IMAGE_MODEL = 'gemini-3-pro-image-preview';
 const AUDIO_MODEL = 'gemini-2.5-flash-preview-tts';
+
+// --- Prompt Engineering Helpers ---
 
 const getLevelInstruction = (level: ComplexityLevel): string => {
   switch (level) {
@@ -55,10 +63,20 @@ const getStyleInstruction = (style: VisualStyle): string => {
     case 'Noir': return "Aesthetic: Film Noir. High contrast black and white, dramatic shadows (chiaroscuro), moody atmosphere, cinematic lighting.";
     case 'Stained Glass': return "Aesthetic: Stained Glass. Mosaic patterns, vivid light passing through colored glass, heavy lead lines, luminous.";
     case 'Claymation': return "Aesthetic: Claymation/Stop Motion. Plasticine texture, fingerprints visible, soft studio lighting, shallow depth of field, Aardman style.";
+    case 'Blueprint': return "Aesthetic: Architectural Blueprint. White lines on blueprint blue background, technical annotations, grid lines, precise scale, schematic look.";
+    case 'Oil Painting': return "Aesthetic: Classical Oil Painting. Visible brush strokes, rich texture, blended colors, impasto effect, dramatic lighting, canvas texture.";
+    case 'Art Deco': return "Aesthetic: Art Deco. Geometric shapes, bold symmetry, gold and black color palette, metallic gradients, sunburst motifs, luxurious feel.";
+    case 'Psychedelic': return "Aesthetic: 60s Psychedelic. Swirling patterns, vibrant neon colors, fluid shapes, trippy optical illusions, surrealism, flowing lines.";
+    case 'Papercut': return "Aesthetic: Layered Papercut Art. Depth created by stacked paper layers, drop shadows, minimal texture, vibrant contrasting colors, craft aesthetic.";
     default: return "Aesthetic: High-quality digital scientific illustration. Clean, modern, highly detailed.";
   }
 };
 
+// --- API Functions ---
+
+/**
+ * Researches a topic using Google Search grounding and constructs a structured response.
+ */
 export const researchTopicForPrompt = async (
   topic: string, 
   level: ComplexityLevel, 
@@ -108,7 +126,7 @@ export const researchTopicForPrompt = async (
 
     const text = response.text || "";
     
-    // Refined Regex to handle markdown bolding or slight format variations
+    // Parse the structured response
     const factsMatch = text.match(/(?:\*\*|\#\#)?\s*FACTS:?\s*(?:\*\*|\#\#)?\s*([\s\S]*?)(?=(?:\*\*|\#\#)?\s*SUGGESTIONS:|(?:\*\*|\#\#)?\s*IMAGE_PROMPT:|$)/i);
     const factsRaw = factsMatch ? factsMatch[1].trim() : "";
     const facts = factsRaw.split('\n')
@@ -156,6 +174,9 @@ export const researchTopicForPrompt = async (
   }
 };
 
+/**
+ * Generates an audio narration for the text using TTS model.
+ */
 export const generateNarration = async (text: string, language: Language): Promise<string> => {
   try {
     const response = await getAi().models.generateContent({
@@ -184,6 +205,9 @@ export const generateNarration = async (text: string, language: Language): Promi
   }
 };
 
+/**
+ * Generates an infographic image based on the prompt.
+ */
 export const generateInfographicImage = async (prompt: string, quality: ImageQuality = '1K', aspectRatio: AspectRatio = '1:1'): Promise<string> => {
   try {
     const response = await getAi().models.generateContent({
@@ -192,7 +216,6 @@ export const generateInfographicImage = async (prompt: string, quality: ImageQua
         parts: [{ text: prompt }]
       },
       config: {
-        // Fixed: Removed Modality.IMAGE from config as it is not used in the guideline examples for nano banana series models
         imageConfig: {
           imageSize: quality,
           aspectRatio: aspectRatio
@@ -200,7 +223,7 @@ export const generateInfographicImage = async (prompt: string, quality: ImageQua
       }
     });
 
-    // Fixed: Iterating through all parts to find the image part as per guidelines
+    // Iterate through candidates to find image data
     for (const candidate of response.candidates || []) {
       for (const part of candidate.content.parts || []) {
         if (part.inlineData && part.inlineData.data) {
@@ -216,8 +239,12 @@ export const generateInfographicImage = async (prompt: string, quality: ImageQua
   }
 };
 
+/**
+ * Edits an existing infographic based on a text instruction.
+ */
 export const editInfographicImage = async (currentImageBase64: string, editInstruction: string, quality: ImageQuality = '1K', aspectRatio: AspectRatio = '1:1'): Promise<string> => {
   try {
+    // Strip header if present
     const cleanBase64 = currentImageBase64.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
     
     const response = await getAi().models.generateContent({
@@ -229,7 +256,6 @@ export const editInfographicImage = async (currentImageBase64: string, editInstr
         ]
       },
       config: {
-        // Fixed: Removed Modality.IMAGE
         imageConfig: {
           imageSize: quality,
           aspectRatio: aspectRatio
@@ -237,7 +263,6 @@ export const editInfographicImage = async (currentImageBase64: string, editInstr
       }
     });
     
-    // Fixed: Iterating through all parts to find the image part as per guidelines
     for (const candidate of response.candidates || []) {
       for (const part of candidate.content.parts || []) {
         if (part.inlineData && part.inlineData.data) {
