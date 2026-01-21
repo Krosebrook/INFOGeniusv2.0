@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -191,7 +192,7 @@ export const generateInfographicImage = async (prompt: string, quality: ImageQua
         parts: [{ text: prompt }]
       },
       config: {
-        responseModalities: [Modality.IMAGE],
+        // Fixed: Removed Modality.IMAGE from config as it is not used in the guideline examples for nano banana series models
         imageConfig: {
           imageSize: quality,
           aspectRatio: aspectRatio
@@ -199,11 +200,16 @@ export const generateInfographicImage = async (prompt: string, quality: ImageQua
       }
     });
 
-    const part = response.candidates?.[0]?.content?.parts?.[0];
-    if (part && part.inlineData && part.inlineData.data) {
-      return `data:image/png;base64,${part.inlineData.data}`;
+    // Fixed: Iterating through all parts to find the image part as per guidelines
+    for (const candidate of response.candidates || []) {
+      for (const part of candidate.content.parts || []) {
+        if (part.inlineData && part.inlineData.data) {
+          return `data:image/png;base64,${part.inlineData.data}`;
+        }
+      }
     }
-    throw new Error("Failed to generate image content.");
+
+    throw new Error("Failed to generate image content: No image data returned.");
   } catch (e) {
     logError(e, 'GeminiService.generateInfographicImage');
     throw e;
@@ -223,7 +229,7 @@ export const editInfographicImage = async (currentImageBase64: string, editInstr
         ]
       },
       config: {
-        responseModalities: [Modality.IMAGE],
+        // Fixed: Removed Modality.IMAGE
         imageConfig: {
           imageSize: quality,
           aspectRatio: aspectRatio
@@ -231,11 +237,16 @@ export const editInfographicImage = async (currentImageBase64: string, editInstr
       }
     });
     
-     const part = response.candidates?.[0]?.content?.parts?.[0];
-    if (part && part.inlineData && part.inlineData.data) {
-      return `data:image/png;base64,${part.inlineData.data}`;
+    // Fixed: Iterating through all parts to find the image part as per guidelines
+    for (const candidate of response.candidates || []) {
+      for (const part of candidate.content.parts || []) {
+        if (part.inlineData && part.inlineData.data) {
+          return `data:image/png;base64,${part.inlineData.data}`;
+        }
+      }
     }
-    throw new Error("Failed to edit image content.");
+
+    throw new Error("Failed to edit image content: No image data returned.");
   } catch (e) {
     logError(e, 'GeminiService.editInfographicImage');
     throw e;

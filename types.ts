@@ -3,7 +3,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
 */
-export type AspectRatio = '16:9' | '9:16' | '1:1';
+export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3' | '3:4';
 
 export type ComplexityLevel = 'Elementary' | 'High School' | 'College' | 'Expert';
 
@@ -44,6 +44,8 @@ export interface GeneratedImage {
   style?: VisualStyle;
   language?: Language;
   quality?: ImageQuality;
+  // Fixed: Added missing aspectRatio property to resolve TypeScript errors in App.tsx
+  aspectRatio?: AspectRatio;
   relatedTopics?: string[];
   facts?: string[]; // New: Store the researched facts
   audioUrl?: string;
